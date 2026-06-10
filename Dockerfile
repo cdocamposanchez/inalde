@@ -20,7 +20,10 @@ RUN apt-get update \
 
 # Instala dependencias de Python primero (mejor cacheo de capas).
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt \
+        --trusted-host pypi.org \
+        --trusted-host files.pythonhosted.org \
+        --trusted-host pypi.python.org
 
 # Copia el código de la aplicación.
 COPY . .
