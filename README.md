@@ -141,9 +141,3 @@ inalde/
 ```
 
 ---
-
-## Notas
-
-- Las hojas de vida **no contienen secciones asociadas a la UBPD**; la antigua sección de "dependencias" fue reemplazada por **habilidades**.
-- El motor es **100% determinista**: ante los mismos datos de candidato y oferta, siempre produce el mismo resultado.
-- Para que el sistema no pierda información, debe permanecer activo al menos uno entre `STORE_HOJAS_VIDA` y `EMAIL_ENABLED` (validado al arranque).
