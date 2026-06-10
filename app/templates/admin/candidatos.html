@@ -1,0 +1,75 @@
+{% extends "admin/_layout.html" %}
+{% block seccion %}candidatos{% endblock %}
+{% block title %}Candidatos{% endblock %}
+{% block heading %}Candidatos{% endblock %}
+
+{% block content %}
+<form class="filters" method="get" action="/admin/candidatos">
+  <input class="input-x" type="text" name="q" value="{{ filtro_q }}"
+         placeholder="Buscar por nombre, documento, correo o consecutivo…"
+         data-table-search="tbl-candidatos" />
+  <select class="input-x" name="estado" style="max-width:220px;">
+    <option value="">Todos los estados</option>
+    {% for est in estados %}
+    <option value="{{ est.codigo }}" {% if filtro_estado == est.codigo %}selected{% endif %}>{{ est.etiqueta }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-rojo btn-sm">Filtrar</button>
+  {% if filtro_q or filtro_estado %}
+  <a class="btn btn-line btn-sm" href="/admin/candidatos">Limpiar</a>
+  {% endif %}
+</form>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2><span data-search-count="tbl-candidatos" data-count-tpl="{n}">{{ candidatos|length }}</span> candidato(s)</h2>
+  </div>
+  <div class="panel-body" style="padding:0;">
+    {% if candidatos %}
+    <table class="table" id="tbl-candidatos">
+      <thead>
+        <tr>
+          <th>Consecutivo</th>
+          <th>Nombre</th>
+          <th>Documento</th>
+          <th>Experiencia</th>
+          <th>Alumni</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in candidatos %}
+        {% set info = estado_info(c.estado) %}
+        <tr>
+          <td class="num">{{ c.consecutivo }}</td>
+          <td>
+            <strong>{{ c.nombre_completo }}</strong><br />
+            <span style="color:var(--gris-medio); font-size:12.5px;">{{ c.correo }}</span>
+          </td>
+          <td class="num">{{ c.numero_documento }}</td>
+          <td class="num">{{ c.anos_experiencia if c.anos_experiencia is not none else '—' }}{% if c.anos_experiencia is not none %} años{% endif %}</td>
+          <td>
+            {% if c.es_alumni %}
+              <span class="chip-ok">Alumni</span>
+            {% else %}
+              <span style="color:var(--gris-medio);">No</span>
+            {% endif %}
+          </td>
+          <td>{{ estado_badge(info) }}</td>
+          <td style="text-align:right;">
+            <a class="btn btn-line btn-sm" href="/admin/candidatos/{{ c.id }}">Abrir</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <div class="ic">☰</div>
+      <p>No hay candidatos que coincidan con el filtro.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

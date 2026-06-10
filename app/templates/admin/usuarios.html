@@ -1,0 +1,175 @@
+{% extends "admin/_layout.html" %}
+{% block seccion %}usuarios{% endblock %}
+{% block title %}Usuarios{% endblock %}
+{% block heading %}Usuarios{% endblock %}
+
+{% block content %}
+
+{# ---------- Barra + modal de creación (Alpine) ---------- #}
+<div x-data="{ open: false }"
+     @keydown.escape.window="open = false"
+     x-effect="document.body.classList.toggle('modal-lock', open)">
+  <div class="table-toolbar" style="margin-bottom:18px;">
+    <div class="table-search-wrap">
+      <input class="tsi" type="search" placeholder="Buscar por usuario, nombre o rol…"
+             data-table-search="tbl-usuarios" aria-label="Buscar usuario" />
+    </div>
+    <button type="button" class="btn btn-rojo" @click="open = true">+ Crear usuario</button>
+  </div>
+
+  {# ---------- Modal: crear usuario ---------- #}
+  <div class="modal-overlay" x-show="open" x-cloak @click.self="open = false"
+       x-transition:enter="ov-enter" x-transition:enter-start="ov-from" x-transition:enter-end="ov-to"
+       x-transition:leave="ov-leave" x-transition:leave-start="ov-to" x-transition:leave-end="ov-from">
+    <div class="modal-card modal-wide" @click.stop
+         x-show="open"
+         x-transition:enter="card-enter" x-transition:enter-start="card-from" x-transition:enter-end="card-to"
+         x-transition:leave="card-leave" x-transition:leave-start="card-to" x-transition:leave-end="card-from">
+      <div class="modal-head">
+        <h3>Crear usuario</h3>
+        <button type="button" class="modal-x" @click="open = false" aria-label="Cerrar">&times;</button>
+      </div>
+      <form method="post" action="/admin/usuarios/crear">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field">
+              <label class="label-x">Usuario *</label>
+              <input class="input-x" name="username" required minlength="3" placeholder="ej. jperez" />
+            </div>
+            <div class="field">
+              <label class="label-x">Nombre completo</label>
+              <input class="input-x" name="nombre_completo" placeholder="Juan Pérez" />
+            </div>
+            <div class="field">
+              <label class="label-x">Contraseña *</label>
+              <input class="input-x" type="password" name="password" required minlength="8" placeholder="Mínimo 8 caracteres" />
+            </div>
+            <div class="field">
+              <label class="label-x">Rol *</label>
+              <select class="input-x" name="rol" required>
+                {% for cod, etq, desc in roles_asignables %}
+                <option value="{{ cod }}">{{ etq }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field col-2">
+              <label class="label-x">Ofertas asignadas <span style="color:var(--gris-medio); font-weight:400;">(aplica a administradores y revisores)</span></label>
+              {% if ofertas %}
+              <div class="chk-ofertas">
+                {% for o in ofertas %}
+                <label class="check-inline">
+                  <input type="checkbox" name="ofertas" value="{{ o.id }}" />
+                  {{ o.titulo }}{% if o.codigo %} <span style="color:var(--gris-medio)">({{ o.codigo }})</span>{% endif %}
+                </label>
+                {% endfor %}
+              </div>
+              {% else %}
+              <p style="color:var(--gris-medio); font-size:13px;">No hay ofertas creadas todavía.</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-line" @click="open = false">Cancelar</button>
+          <button type="submit" class="btn btn-rojo">Crear usuario</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>{# /x-data crear usuario #}
+
+{# ---------- Lista de usuarios ---------- #}
+<div class="panel">
+  <div class="panel-head"><h2><span data-search-count="tbl-usuarios" data-count-tpl="{n}">{{ usuarios|length }}</span> usuario(s)</h2></div>
+  <div class="panel-body" style="padding:0;">
+    <table class="table" id="tbl-usuarios">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Nombre</th>
+          <th>Rol</th>
+          <th>Alcance</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr class="{% if not u.activo %}u-inactive{% endif %}">
+          <td><strong>{{ u.username }}</strong></td>
+          <td>{{ u.nombre_completo or '—' }}</td>
+          <td><span class="role-pill role-{{ u.rol }}">
+            {%- if u.es_superadmin -%}Superadmin{%- elif u.es_admin -%}Administrador{%- else -%}Revisor{%- endif -%}
+          </span></td>
+          <td>
+            {% if u.ve_todo() %}
+              <span style="color:var(--gris-medio); font-size:13px;">Todas las ofertas</span>
+            {% else %}
+              <span class="num">{{ u.ofertas|length }} oferta(s)</span>
+            {% endif %}
+          </td>
+          <td>{% if u.activo %}<span class="chip-ok">Activo</span>{% else %}<span class="chip-no">Inactivo</span>{% endif %}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            {% if not u.es_superadmin or u.id == admin.id %}
+            <details style="display:inline-block; text-align:left;">
+              <summary class="btn btn-line btn-sm" style="list-style:none;">Editar</summary>
+              <div style="position:absolute; right:40px; margin-top:8px; width:380px; max-width:90vw; background:#fff; border:1px solid var(--gris-barra); border-radius:12px; box-shadow:var(--sombra); padding:18px; z-index:30; text-align:left;">
+
+                <form method="post" action="/admin/usuarios/{{ u.id }}/actualizar">
+                  <div class="field" style="margin-bottom:10px;">
+                    <label class="label-x">Nombre completo</label>
+                    <input class="input-x" name="nombre_completo" value="{{ u.nombre_completo or '' }}" />
+                  </div>
+                  {% if not u.es_superadmin %}
+                  <div class="field" style="margin-bottom:10px;">
+                    <label class="label-x">Rol</label>
+                    <select class="input-x" name="rol" {% if u.id == admin.id %}disabled{% endif %}>
+                      {% for cod, etq, desc in roles_asignables %}
+                      <option value="{{ cod }}" {% if u.rol == cod %}selected{% endif %}>{{ etq }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="field" style="margin-bottom:10px;">
+                    <label class="label-x">Ofertas asignadas</label>
+                    <div class="chk-ofertas">
+                      {% for o in ofertas %}
+                      <label class="check-inline">
+                        <input type="checkbox" name="ofertas" value="{{ o.id }}" {% if o.id in u.ofertas_ids() %}checked{% endif %} />
+                        {{ o.titulo }}
+                      </label>
+                      {% endfor %}
+                    </div>
+                  </div>
+                  {% endif %}
+                  <label class="check-inline" style="margin:8px 0 12px;">
+                    <input type="checkbox" name="activo" value="1" {% if u.activo %}checked{% endif %}
+                      {% if u.id == admin.id %}disabled{% endif %} /> Usuario activo
+                  </label>
+                  {% if u.id == admin.id %}<input type="hidden" name="activo" value="1" />{% endif %}
+                  <button type="submit" class="btn btn-rojo btn-sm" style="width:100%; justify-content:center;">Guardar cambios</button>
+                </form>
+
+                <form method="post" action="/admin/usuarios/{{ u.id }}/password" style="margin-top:12px; padding-top:12px; border-top:1px solid var(--gris-seccion);">
+                  <label class="label-x">Nueva contraseña</label>
+                  <div style="display:flex; gap:8px; margin-top:6px;">
+                    <input class="input-x" type="password" name="password" minlength="8" placeholder="Mínimo 8 caracteres" required />
+                    <button type="submit" class="btn btn-line btn-sm">Cambiar</button>
+                  </div>
+                </form>
+              </div>
+            </details>
+            {% else %}
+            <span style="color:var(--gris-medio); font-size:12.5px;">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p style="color:var(--gris-medio); font-size:12.5px;">
+  El rol <strong>superadmin</strong> no se asigna desde aquí: es la cuenta raíz del sistema. Los administradores y los revisores solo ven las ofertas que se les asignen; el superadministrador ve todo.
+</p>
+{% endblock %}

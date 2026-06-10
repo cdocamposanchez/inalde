@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-mark">i</div>
+      <div class="brand-text">
+        <strong>INALDE</strong>
+        <span>{{ app_short_name }}</span>
+      </div>
+      <div class="topbar-cta">
+        <a class="topbar-link" href="/admin">Acceso administrativo</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <span class="eyebrow">Banco de talento ejecutivo</span>
+      <h1>Postula tu hoja de vida</h1>
+      <p>Registra tu perfil profesional para participar en los procesos de búsqueda de talento directivo de la comunidad INALDE. La evaluación se realiza con un sistema ATS objetivo, sin inteligencia artificial.</p>
+      <div class="rule"></div>
+    </div>
+  </section>
+
+  <main class="wrap">
+    <div class="card" id="form-card">
+      <!-- Stepper -->
+      <div class="stepper">
+        <div class="step-item" data-step="1"><div class="step-circle">1</div><div class="step-label">Datos personales</div></div>
+        <div class="step-item" data-step="2"><div class="step-circle">2</div><div class="step-label">Perfil ejecutivo</div></div>
+        <div class="step-item" data-step="3"><div class="step-circle">3</div><div class="step-label">Habilidades</div></div>
+        <div class="step-item" data-step="4"><div class="step-circle">4</div><div class="step-label">Formación</div></div>
+        <div class="step-item" data-step="5"><div class="step-circle">5</div><div class="step-label">Experiencia</div></div>
+        <div class="step-item" data-step="6"><div class="step-circle">6</div><div class="step-label">Hoja de vida y envío</div></div>
+      </div>
+
+      <!-- Paso 1: Datos personales -->
+      <div class="paso-content" data-paso="1">
+        <h3 class="paso-title">Datos personales</h3>
+        <p class="paso-sub">Información de contacto e identificación.</p>
+        <div class="grid-2">
+          <div class="field"><label class="label-x">Nombres<span class="req">*</span></label>
+            <input class="input-x" id="nombres" data-required placeholder="Tus nombres"><span class="error-msg">Campo obligatorio</span></div>
+          <div class="field"><label class="label-x">Apellidos<span class="req">*</span></label>
+            <input class="input-x" id="apellidos" data-required placeholder="Tus apellidos"><span class="error-msg">Campo obligatorio</span></div>
+          <div class="field"><label class="label-x">Tipo de documento<span class="req">*</span></label>
+            <select class="input-x" id="tipo_documento" data-required></select><span class="error-msg">Campo obligatorio</span></div>
+          <div class="field"><label class="label-x">Número de documento<span class="req">*</span></label>
+            <input class="input-x" id="numero_documento" data-required placeholder="Número"><span class="error-msg">Campo obligatorio</span></div>
+          <div class="field"><label class="label-x">Fecha de nacimiento</label>
+            <input class="input-x" type="date" id="fecha_nacimiento"></div>
+          <div class="field"><label class="label-x">Nacionalidad</label>
+            <select class="input-x" id="nacionalidad"></select></div>
+          <div class="field"><label class="label-x">Correo electrónico<span class="req">*</span></label>
+            <input class="input-x" type="email" id="correo" data-required placeholder="nombre@correo.com"><span class="error-msg">Campo obligatorio</span></div>
+          <div class="field"><label class="label-x">Teléfono celular<span class="req">*</span></label>
+            <input class="input-x" id="telefono_celular" data-required placeholder="300 000 0000"><span class="error-msg">Campo obligatorio</span></div>
+          <div class="field"><label class="label-x">LinkedIn</label>
+            <input class="input-x" id="linkedin" placeholder="https://linkedin.com/in/…"></div>
+          <div class="field"></div>
+          <div class="field"><label class="label-x">Ciudad</label>
+            <input class="input-x" id="ciudad" placeholder="Ciudad de residencia"></div>
+          <div class="field"><label class="label-x">País</label>
+            <input class="input-x" id="pais" value="Colombia"></div>
+        </div>
+      </div>
+
+      <!-- Paso 2: Perfil ejecutivo -->
+      <div class="paso-content" data-paso="2">
+        <h3 class="paso-title">Perfil ejecutivo</h3>
+        <p class="paso-sub">Resumen de tu trayectoria y disponibilidad.</p>
+        <div class="grid-2">
+          <div class="field col-2"><label class="label-x">Titular profesional</label>
+            <input class="input-x" id="titular" placeholder="Ej. Director Comercial · Consumo masivo"></div>
+          <div class="field col-2"><label class="label-x">Resumen profesional</label>
+            <textarea class="input-x" id="resumen_profesional" placeholder="Breve descripción de tu perfil, logros y aspiraciones."></textarea></div>
+          <div class="field">
+            <label class="label-x">Años de experiencia
+              <span class="tip" data-tip="Total de años de experiencia profesional acumulada. Usa solo números, por ejemplo: 12.">?</span>
+            </label>
+            <input class="input-x" type="number" id="anos_experiencia" min="0" max="60" placeholder="Ej. 12"></div>
+          <div class="field">
+            <label class="label-x">Pretensión salarial
+              <span class="tip" data-tip="Monto o rango mensual esperado en COP. Ej.: $12.000.000, 10–14 millones, o 'A convenir'.">?</span>
+            </label>
+            <input class="input-x" id="pretension_salarial" placeholder="Ej. $12.000.000 / A convenir"></div>
+        </div>
+        <div class="grid-2" style="margin-top:8px">
+          <div class="check-row"><input type="checkbox" id="disp_viaje"><label>Disponibilidad para viajar</label></div>
+          <div class="check-row"><input type="checkbox" id="disp_reub"><label>Disponibilidad para reubicación</label></div>
+        </div>
+        <div class="check-row"><input type="checkbox" id="es_alumni"><label>Soy alumni de INALDE</label></div>
+        <div class="field" id="programa-wrap" style="display:none">
+          <label class="label-x">Programa cursado en INALDE</label>
+          <input class="input-x" id="programa_inalde" placeholder="Ej. MBA, PADE, PDD…">
+        </div>
+      </div>
+
+      <!-- Paso 3: Habilidades, tecnologías e idiomas -->
+      <div class="paso-content" data-paso="3">
+        <h3 class="paso-title">Habilidades, tecnologías e idiomas</h3>
+        <p class="paso-sub">Registra tus competencias clave. Agrega al menos una habilidad.</p>
+
+        <div class="field">
+          <label class="label-x">Habilidades / competencias<span class="req">*</span></label>
+          <div class="tag-input-row">
+            <input class="input-x" id="hab-input" list="habilidades-datalist" placeholder="Ej. liderazgo comercial, manejo de P&L, negociación…">
+            <select class="input-x select-nivel" id="hab-nivel">
+              <option value="">Nivel…</option>
+              <option value="basico">Básico</option>
+              <option value="intermedio">Intermedio</option>
+              <option value="avanzado">Avanzado</option>
+              <option value="experto">Experto</option>
+            </select>
+            <button type="button" class="btn-ghost-x" id="hab-add">Agregar</button>
+          </div>
+          <datalist id="habilidades-datalist"></datalist>
+          <div class="tag-list" id="hab-list"></div>
+        </div>
+
+        <div class="field" style="margin-top:18px">
+          <label class="label-x">Tecnologías / herramientas</label>
+          <div class="tag-input-row">
+            <input class="input-x" id="tec-input" list="tecnologias-datalist" placeholder="Ej. SAP, Power BI, Salesforce, Python…">
+            <select class="input-x select-nivel" id="tec-nivel">
+              <option value="">Nivel…</option>
+              <option value="basico">Básico</option>
+              <option value="intermedio">Intermedio</option>
+              <option value="avanzado">Avanzado</option>
+              <option value="experto">Experto</option>
+            </select>
+            <button type="button" class="btn-ghost-x" id="tec-add">Agregar</button>
+          </div>
+          <datalist id="tecnologias-datalist"></datalist>
+          <div class="tag-list" id="tec-list"></div>
+        </div>
+
+        <div class="field" style="margin-top:18px">
+          <label class="label-x">Idiomas</label>
+          <div class="tag-input-row">
+            <input class="input-x" id="idi-input" list="idiomas-datalist" placeholder="Ej. Inglés, Portugués, Francés…">
+            <select class="input-x select-nivel" id="idi-nivel">
+              <option value="">Nivel…</option>
+              <option value="basico">Básico</option>
+              <option value="intermedio">Intermedio</option>
+              <option value="avanzado">Avanzado</option>
+              <option value="nativo">Nativo</option>
+            </select>
+            <button type="button" class="btn-ghost-x" id="idi-add">Agregar</button>
+          </div>
+          <datalist id="idiomas-datalist"></datalist>
+          <div class="tag-list" id="idi-list"></div>
+        </div>
+
+        <div class="field" style="margin-top:18px">
+          <label class="label-x">Sectores de experiencia
+            <span class="tip" data-tip="Escribe para autocompletar desde el catálogo. Puedes agregar varios.">?</span>
+          </label>
+          <div class="tag-input-row">
+            <input class="input-x" id="sec-input" list="sectores-datalist" placeholder="Escribe para autocompletar: Financiero, Tecnología…" autocomplete="off">
+            <button type="button" class="btn-ghost-x" id="sec-add">Agregar</button>
+          </div>
+          <datalist id="sectores-datalist"></datalist>
+          <div class="tag-list" id="sec-list"></div>
+        </div>
+      </div>
+
+      <!-- Paso 4: Formación académica -->
+      <div class="paso-content" data-paso="4">
+        <h3 class="paso-title">Formación académica</h3>
+        <p class="paso-sub">Agrega hasta {{ max_formaciones }} formaciones.</p>
+        <div id="formaciones"></div>
+        <button type="button" class="btn-add" id="add-formacion">+ Agregar formación</button>
+      </div>
+
+      <!-- Paso 5: Experiencia profesional -->
+      <div class="paso-content" data-paso="5">
+        <h3 class="paso-title">Experiencia profesional</h3>
+        <p class="paso-sub">Agrega hasta {{ max_experiencias }} experiencias.</p>
+        <div id="experiencias"></div>
+        <button type="button" class="btn-add" id="add-experiencia">+ Agregar experiencia</button>
+      </div>
+
+      <!-- Paso 6: CV y envío -->
+      <div class="paso-content" data-paso="6">
+        <h3 class="paso-title">Hoja de vida y confirmación</h3>
+        <p class="paso-sub">Adjunta tu hoja de vida en PDF y revisa el resumen.</p>
+
+        <div class="field">
+          <label class="label-x">Hoja de vida (PDF)<span class="req">*</span></label>
+          <div class="dropzone" id="dropzone">
+            <div class="dz-icon">⬆</div>
+            <div class="dz-text">Haz clic o arrastra tu archivo PDF aquí</div>
+            <div class="dz-hint">Solo PDF · máximo 10 MB</div>
+          </div>
+          <input type="file" id="cv-file" accept="application/pdf" hidden>
+          <div class="file-pill" id="file-pill">
+            <span>📄</span><span class="fp-name" id="fp-name"></span>
+            <button type="button" class="fp-remove" id="fp-remove">Quitar</button>
+          </div>
+        </div>
+
+        <div id="resumen" style="margin-top:20px"></div>
+      </div>
+
+      <!-- Botonera -->
+      <div class="actions">
+        <button type="button" class="btn-ghost-x" id="btn-prev">Anterior</button>
+        <div style="display:flex;gap:12px">
+          <button type="button" class="btn-primary-x" id="btn-next">Siguiente</button>
+          <button type="button" class="btn-primary-x" id="btn-submit" style="display:none">Enviar hoja de vida</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="foot">© {{ anio }} INALDE Business School · {{ app_short_name }}</p>
+  </main>
+
+  <script>
+    window.INALDE_CFG = {
+      maxFormaciones: {{ max_formaciones }},
+      maxExperiencias: {{ max_experiencias }},
+      maxHabilidades: {{ max_habilidades }},
+      maxIdiomas: {{ max_idiomas }}
+    };
+  </script>
+  <script src="/static/js/form.js"></script>
+</body>
+</html>

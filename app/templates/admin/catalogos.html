@@ -1,0 +1,61 @@
+{% extends "admin/_layout.html" %}
+{% block seccion %}catalogos{% endblock %}
+{% block title %}Catálogos{% endblock %}
+{% block heading %}Catálogos{% endblock %}
+
+{% block content %}
+<p style="color:var(--gris-medio); font-size:13.5px; margin-top:0; margin-bottom:22px;">
+  Listas maestras que alimentan el formulario público y la configuración de ofertas.
+</p>
+
+{% set etiquetas = {
+  'tipos-documento': 'Tipos de documento',
+  'nacionalidades': 'Nacionalidades',
+  'niveles-formacion': 'Niveles de formación',
+  'sectores': 'Sectores',
+  'departamentos': 'Departamentos'
+} %}
+
+{% for nombre, items in catalogos.items() %}
+<div class="panel">
+  <div class="panel-head">
+    <h2>{{ etiquetas.get(nombre, nombre) }}</h2>
+    <span class="crumb">{{ items|length }} registro(s)</span>
+  </div>
+  <div class="panel-body" style="padding:0;">
+    {% if items %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          {% if nombre == 'niveles-formacion' %}<th>Peso</th>{% endif %}
+          {% if nombre == 'departamentos' %}<th>Código DANE</th>{% else %}<th>Código</th>{% endif %}
+          <th>Activo</th>
+          <th>Orden</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td><strong>{{ it.nombre }}</strong></td>
+          {% if nombre == 'niveles-formacion' %}<td class="num">{{ it.peso }}</td>{% endif %}
+          {% if nombre == 'departamentos' %}
+            <td class="num">{{ it.codigo_dane or '—' }}</td>
+          {% else %}
+            <td class="num">{{ it.codigo or '—' }}</td>
+          {% endif %}
+          <td>
+            {% if it.activo %}<span class="chip-ok">Sí</span>{% else %}<span class="chip-no">No</span>{% endif %}
+          </td>
+          <td class="num">{{ it.orden }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty"><p>Sin registros.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

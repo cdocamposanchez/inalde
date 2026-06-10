@@ -1,0 +1,495 @@
+{% extends "admin/_layout.html" %}
+{% block seccion %}candidatos{% endblock %}
+{% block title %}{{ cand.nombre_completo }}{% endblock %}
+{% block heading %}{{ cand.nombre_completo }}{% endblock %}
+{% block crumb %}<span class="crumb">{{ cand.consecutivo }}</span>{% endblock %}
+
+{% block content %}
+
+{% set info = estado_info(cand.estado) %}
+
+<div x-data="{ cv: false, cvSrc: '', cvLoaded: false }"
+     @keydown.escape.window="cv = false"
+     x-effect="document.body.classList.toggle('modal-lock', cv)">
+
+<div style="display:grid; grid-template-columns: 1fr 320px; gap:24px; align-items:start;">
+
+  {# ---------------- Columna principal ---------------- #}
+  <div>
+
+    {# ---- Curaduría (motor ATS) ---- #}
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Ejecutar curaduría ATS</h2>
+      </div>
+      <div class="panel-body">
+        <p style="margin-top:0; color:var(--gris-medio); font-size:13.5px;">
+          Evalúa este candidato contra una oferta laboral mediante el motor de reglas determinista (sin IA).
+        </p>
+        <form method="post" action="/admin/candidatos/{{ cand.id }}/curar"
+              style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+          <div class="field" style="flex:1; min-width:240px; margin:0;">
+            <label class="label-x" for="oferta_id">Oferta laboral</label>
+            <select class="input-x" id="oferta_id" name="oferta_id" required>
+              {% for o in ofertas %}
+              <option value="{{ o.id }}">{{ o.titulo }}{% if o.codigo %} ({{ o.codigo }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-rojo">Curar</button>
+        </form>
+        {% if not ofertas %}
+        <p class="callout callout-gris" style="margin-top:14px;">No hay ofertas activas. Cree una en la sección Ofertas laborales.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ---- Selector de evaluaciones (pestañas superiores) ---- #}
+    {% if evaluaciones %}
+    <div class="eval-switch">
+      <div class="eval-tabs" role="tablist" aria-label="Evaluaciones del candidato">
+        {% for ev in evaluaciones %}
+        {% set tpts = ev.puntuacion or 0 %}
+        {% set tcol = '#15803d' if tpts >= 90 else '#16a34a' if tpts >= 80 else '#ca8a04' if tpts >= 70 else '#ea580c' if tpts >= 60 else '#dc2626' if tpts >= 40 else '#991b1b' %}
+        <button type="button" class="eval-tab" role="tab" data-eval-target="eval-panel-{{ ev.oferta_id }}">
+          <span class="et-score" style="background: {{ tcol }};">{{ tpts }}</span>
+          <span class="et-title">{{ ev.oferta.titulo if ev.oferta else 'Oferta' }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# ---- Resultados de evaluaciones (una visible a la vez) ---- #}
+    {% for ev in evaluaciones %}
+    {% set r = eval_por_oferta.get(ev.oferta_id, {}) %}
+    <div class="panel eval-panel" id="eval-panel-{{ ev.oferta_id }}">
+      <div class="panel-head">
+        <h3>{{ ev.oferta.titulo if ev.oferta else 'Oferta' }}</h3>
+        {% if ev.resultado_eliminatorio == 'cumple' %}
+          <span class="chip-ok">Cumple eliminatorios</span>
+        {% elif ev.resultado_eliminatorio == 'no_cumple' %}
+          <span class="chip-no">No cumple eliminatorios</span>
+        {% else %}
+          <span class="badge bg-amber-100 text-amber-800">Información insuficiente</span>
+        {% endif %}
+      </div>
+      <div class="panel-body">
+
+        {# ---- Cabecera: gauge + recomendación ---- #}
+        {% set pts = ev.puntuacion or 0 %}
+        {% set gcol = '#15803d' if pts >= 90 else '#16a34a' if pts >= 80 else '#ca8a04' if pts >= 70 else '#ea580c' if pts >= 60 else '#dc2626' if pts >= 40 else '#991b1b' %}
+        <div class="an-head">
+          <div class="gauge" data-gauge data-p="{{ pts }}" style="--p: {{ pts }}; --col: {{ gcol }};">
+            <span class="g-val">{{ pts }}</span>
+            <span class="g-cap">de 100</span>
+          </div>
+          <div>
+            <p class="an-rec" style="color: {{ gcol }};">{{ ev.nivel_recomendacion or 'Sin recomendación' }}</p>
+            <div class="an-tags">
+              <span class="badge bg-sky-100 text-sky-800">Modo: {{ (ev.modo_busqueda_aplicado or '—')|replace('_',' ') }}</span>
+              {% if ev.complejidad_nivel %}
+              <span class="badge bg-slate-100 text-slate-700" style="border-color:var(--gris-barra);">Complejidad: {{ ev.complejidad_nivel }}</span>
+              {% endif %}
+              {% if r.anos_experiencia_total is not none %}
+              <span class="badge bg-slate-100 text-slate-700" style="border-color:var(--gris-barra);">{{ r.anos_experiencia_total }} años exp.</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# ---- Métricas rápidas ---- #}
+        <div class="metric-mini-grid">
+          {% if r.nivel_educacion %}
+          <div class="metric-mini"><div class="mm-label">Educación</div><div class="mm-value">{{ r.nivel_educacion|replace('_',' ')|capitalize }}</div></div>
+          {% endif %}
+          {% if r.sector_experiencia %}
+          <div class="metric-mini"><div class="mm-label">Sectores</div><div class="mm-value">{{ r.sector_experiencia|length }}</div></div>
+          {% endif %}
+          {% if r.skills_match is defined %}
+          <div class="metric-mini"><div class="mm-label">Skills match</div><div class="mm-value">{{ r.skills_match|length }}{% if r.skills_faltantes %} / {{ r.skills_match|length + r.skills_faltantes|length }}{% endif %}</div></div>
+          {% endif %}
+          {% if r.criterios_eliminatorios_no_cumplidos is defined %}
+          <div class="metric-mini"><div class="mm-label">Eliminatorios fallidos</div><div class="mm-value" style="{% if r.criterios_eliminatorios_no_cumplidos %}color:var(--rojo);{% endif %}">{{ r.criterios_eliminatorios_no_cumplidos|length }}</div></div>
+          {% endif %}
+        </div>
+
+        {# ---- Veredicto (resumen ejecutivo, reorganizado) ---- #}
+        {% set _resumen_parts = (ev.resumen_ejecutivo or '').split('\n\n') %}
+        {% set _veredicto = _resumen_parts[0] if (_resumen_parts and _resumen_parts[0]) else (ev.resumen_ejecutivo or '') %}
+        {% if _veredicto %}
+        <p class="section-title">Veredicto</p>
+        <div class="callout {% if ev.resultado_eliminatorio == 'no_cumple' %}callout-rojo{% else %}callout-gris{% endif %}" style="margin-bottom:16px;">
+          <p class="verdict-line" style="margin:0;">{{ _veredicto }}</p>
+        </div>
+        {% endif %}
+
+        {# ---- Eliminatorios no cumplidos ---- #}
+        {% if r.criterios_eliminatorios_no_cumplidos %}
+        <div class="an-card no" style="margin-bottom:16px;">
+          <h5>⛔ Requisitos eliminatorios no cumplidos</h5>
+          <ul>{% for d in r.criterios_eliminatorios_no_cumplidos %}<li>{{ d }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        {# ---- Fortalezas / Brechas (arriba, escaneable) ---- #}
+        {% if r.puntos_fuertes or r.debilidades %}
+        <div class="an-cols" style="margin-bottom:18px;">
+          {% if r.puntos_fuertes %}
+          <div class="an-card ok">
+            <h5>✓ Fortalezas principales</h5>
+            <ul>{% for p in r.puntos_fuertes %}<li>{{ p }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if r.debilidades %}
+          <div class="an-card no">
+            <h5>△ Brechas o riesgos a revisar</h5>
+            <ul>{% for p in r.debilidades %}<li>{{ p }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {# ---- Score por criterio ---- #}
+        {% if r.score_detallado %}
+        <p class="section-title">Puntuación por criterio</p>
+        <div class="crit-grid">
+          {% for crit, val in r.score_detallado.items() %}
+          {% set peso = (r.pesos_aplicados or {}).get(crit) %}
+          {% set bcol = '#15803d' if val >= 80 else '#ca8a04' if val >= 50 else '#dc2626' %}
+          <div class="criterio-row">
+            <span class="cname">{{ crit|replace('_', ' ')|capitalize }}</span>
+            <span class="score-bar"><span style="width: {{ val }}%; background: {{ bcol }};"></span></span>
+            <span class="cpeso">{% if peso is not none %}peso {{ peso }}%{% endif %}</span>
+            <span class="cscore" style="color: {{ bcol }};">{{ val }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {# ---- Skills ---- #}
+        {% if r.skills_match or r.skills_faltantes %}
+        <p class="section-title">Habilidades frente a la oferta</p>
+        <div class="chiplist">
+          {% for s in r.skills_match %}<span class="chip-ok">✓ {{ s }}</span>{% endfor %}
+          {% for s in r.skills_faltantes %}<span class="chip-no">falta: {{ s }}</span>{% endfor %}
+        </div>
+        {% endif %}
+
+        {# ---- Columnas: compensaciones / riesgos ---- #}
+        {% if r.compensaciones_aplicadas or r.riesgos_de_contratacion %}
+        <div class="an-cols" style="margin-top:18px;">
+          {% if r.compensaciones_aplicadas %}
+          <div class="an-card info">
+            <h5>⇄ Compensaciones aplicadas</h5>
+            <ul>{% for c in r.compensaciones_aplicadas %}<li>{{ c }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if r.riesgos_de_contratacion %}
+          <div class="an-card no">
+            <h5>⚠ Riesgos de contratación</h5>
+            <ul>{% for c in r.riesgos_de_contratacion %}<li>{{ c }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {# ---- Columnas: preguntas / próximos pasos ---- #}
+        {% if r.preguntas_sugeridas_para_entrevista or r.proximos_pasos %}
+        <div class="an-cols" style="margin-top:18px;">
+          {% if r.preguntas_sugeridas_para_entrevista %}
+          <div class="an-card info">
+            <h5>? Preguntas para la entrevista</h5>
+            <ul>{% for c in r.preguntas_sugeridas_para_entrevista %}<li>{{ c }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if r.proximos_pasos %}
+          <div class="an-card info">
+            <h5>→ Próximos pasos</h5>
+            {% if r.proximos_pasos is string %}
+            <ul>
+              {% for paso in r.proximos_pasos.split('. ') if paso|trim %}
+              <li>{{ paso|trim }}{% if not (paso|trim).endswith('.') %}.{% endif %}</li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <ul>{% for c in r.proximos_pasos %}<li>{{ c }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <p style="color:var(--gris-medio); font-size:12px; margin-top:20px; margin-bottom:0;">
+          Evaluado el {{ ev.fecha_evaluacion | bogota }}
+        </p>
+      </div>
+    </div>
+    {% endfor %}
+
+    {# ---- Hoja de vida: todos los datos del formulario ---- #}
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Hoja de vida — datos del formulario</h3>
+        <a class="btn btn-rojo btn-sm" href="/admin/candidatos/{{ cand.id }}/hoja-de-vida">Descargar hoja de vida</a>
+      </div>
+      <div class="panel-body">
+        <div class="kv-grid">
+          <div class="kv"><span class="kv-k">Consecutivo</span><span class="kv-v">{{ cand.consecutivo or '—' }}</span></div>
+          <div class="kv"><span class="kv-k">Estado actual</span><span class="kv-v">{{ estado_badge(info) }}</span></div>
+          <div class="kv"><span class="kv-k">Nombres</span><span class="kv-v">{{ cand.nombres }}</span></div>
+          <div class="kv"><span class="kv-k">Apellidos</span><span class="kv-v">{{ cand.apellidos }}</span></div>
+          <div class="kv"><span class="kv-k">Tipo de documento</span><span class="kv-v">{{ cand.tipo_documento }}</span></div>
+          <div class="kv"><span class="kv-k">Número de documento</span><span class="kv-v">{{ cand.numero_documento }}</span></div>
+          <div class="kv"><span class="kv-k">Fecha de nacimiento</span><span class="kv-v">{{ cand.fecha_nacimiento | bogota('%d/%m/%Y') if cand.fecha_nacimiento else '—' }}</span></div>
+          <div class="kv"><span class="kv-k">Nacionalidad</span><span class="kv-v">{{ cand.nacionalidad or '—' }}</span></div>
+          <div class="kv"><span class="kv-k">Correo</span><span class="kv-v">{{ cand.correo }}</span></div>
+          <div class="kv"><span class="kv-k">Celular</span><span class="kv-v">{{ cand.telefono_celular }}</span></div>
+          <div class="kv"><span class="kv-k">LinkedIn</span><span class="kv-v">{% if cand.linkedin %}<a href="{{ cand.linkedin }}" target="_blank" rel="noopener">{{ cand.linkedin }}</a>{% else %}—{% endif %}</span></div>
+          <div class="kv"><span class="kv-k">Ciudad</span><span class="kv-v">{{ cand.ciudad or '—' }}</span></div>
+          <div class="kv"><span class="kv-k">País</span><span class="kv-v">{{ cand.pais or '—' }}</span></div>
+          <div class="kv"><span class="kv-k">Cargo actual / titular</span><span class="kv-v">{{ cand.titular or '—' }}</span></div>
+          <div class="kv"><span class="kv-k">Años de experiencia</span><span class="kv-v">{{ cand.anos_experiencia if cand.anos_experiencia is not none else '—' }}</span></div>
+          <div class="kv"><span class="kv-k">Pretensión salarial</span><span class="kv-v">{{ cand.pretension_salarial or '—' }}</span></div>
+          <div class="kv"><span class="kv-k">Disponibilidad de viaje</span><span class="kv-v">{{ 'Sí' if cand.disponibilidad_viaje else 'No' }}</span></div>
+          <div class="kv"><span class="kv-k">Disponibilidad de reubicación</span><span class="kv-v">{{ 'Sí' if cand.disponibilidad_reubicacion else 'No' }}</span></div>
+          <div class="kv"><span class="kv-k">Alumni INALDE</span><span class="kv-v">{{ 'Sí' if cand.es_alumni else 'No' }}</span></div>
+          <div class="kv"><span class="kv-k">Programa INALDE</span><span class="kv-v">{{ cand.programa_inalde or '—' }}</span></div>
+          <div class="kv"><span class="kv-k">Fecha de registro</span><span class="kv-v">{{ cand.fecha_registro | bogota }}</span></div>
+        </div>
+
+        {% if cand.resumen_profesional %}
+        <p class="section-title">Resumen profesional</p>
+        <p style="color:var(--subrayado); line-height:1.7; margin:0;">{{ cand.resumen_profesional }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ---- Perfil profesional ---- #}
+    <div class="panel">
+      <div class="panel-head"><h3>Perfil profesional</h3></div>
+      <div class="panel-body">
+        {% if cand.titular %}<p style="margin-top:0; font-weight:600;">{{ cand.titular }}</p>{% endif %}
+        {% if cand.resumen_profesional %}<p style="color:var(--subrayado); line-height:1.7;">{{ cand.resumen_profesional }}</p>{% endif %}
+
+        {% if cand.habilidades %}
+        <p class="section-title">Habilidades</p>
+        <div class="chiplist">
+          {% for h in cand.habilidades %}
+          <span class="chip-ok">{{ h.nombre }}{% if h.nivel %} · {{ h.nivel }}{% endif %}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if cand.tecnologias %}
+        <p class="section-title">Tecnologías y herramientas</p>
+        <div class="chiplist">
+          {% for t in cand.tecnologias %}
+          <span class="badge bg-slate-100 text-slate-700" style="border-color:var(--gris-barra);">{{ t.nombre }}{% if t.nivel %} · {{ t.nivel }}{% endif %}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if cand.idiomas %}
+        <p class="section-title">Idiomas</p>
+        <div class="chiplist">
+          {% for i in cand.idiomas %}
+          <span class="badge bg-sky-100 text-sky-800">{{ i.idioma }}{% if i.nivel %} · {{ i.nivel }}{% endif %}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if cand.sectores %}
+        <p class="section-title">Sectores de experiencia</p>
+        <div class="chiplist">
+          {% for s in cand.sectores %}<span class="badge bg-slate-100 text-slate-700" style="border-color:var(--gris-barra);">{{ s.sector }}</span>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ---- Experiencia ---- #}
+    {% if cand.experiencias %}
+    <div class="panel">
+      <div class="panel-head"><h3>Experiencia</h3></div>
+      <div class="panel-body">
+        {% for e in cand.experiencias %}
+        <div style="padding:12px 0; border-bottom:1px solid var(--gris-seccion);">
+          <strong>{{ e.cargo }}</strong> — {{ e.empresa }}
+          {% if e.actual %}<span class="chip-ok" style="margin-left:6px;">Actual</span>{% endif %}
+          <div style="color:var(--gris-medio); font-size:13px; margin-top:3px;">
+            {{ e.fecha_inicio.year if e.fecha_inicio else '' }}{% if e.fecha_fin %} – {{ e.fecha_fin.year }}{% elif e.actual %} – presente{% endif %}
+            {% if e.sector %} · {{ e.sector }}{% endif %}
+            {% if e.pais %} · {{ e.pais }}{% endif %}
+            {% if e.nivel_jerarquico %} · {{ e.nivel_jerarquico|replace('_',' ') }}{% endif %}
+          </div>
+          {% if e.lidero_equipo or e.manejo_pyl %}
+          <div class="chiplist" style="margin-top:6px;">
+            {% if e.lidero_equipo %}<span class="badge bg-emerald-100 text-emerald-800">Lideró equipo{% if e.tam_equipo %} ({{ e.tam_equipo }}){% endif %}</span>{% endif %}
+            {% if e.manejo_pyl %}<span class="badge bg-emerald-100 text-emerald-800">Manejo P&amp;L</span>{% endif %}
+          </div>
+          {% endif %}
+          {% if e.funciones %}<p style="color:var(--subrayado); font-size:13.5px; margin:8px 0 0; line-height:1.6;">{{ e.funciones }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# ---- Formación ---- #}
+    {% if cand.formaciones %}
+    <div class="panel">
+      <div class="panel-head"><h3>Formación académica</h3></div>
+      <div class="panel-body">
+        {% for f in cand.formaciones %}
+        <div style="padding:10px 0; border-bottom:1px solid var(--gris-seccion);">
+          <strong>{{ f.titulo }}</strong>
+          {% if f.en_curso %}<span class="badge bg-amber-100 text-amber-800" style="margin-left:6px;">En curso</span>{% endif %}
+          <div style="color:var(--gris-medio); font-size:13px; margin-top:3px;">
+            {{ f.institucion }}
+            {% if f.anio_inicio %} · {{ f.anio_inicio }}{% if f.anio_fin %}–{{ f.anio_fin }}{% endif %}{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ---------------- Columna lateral ---------------- #}
+  <div>
+    <div class="panel">
+      <div class="panel-head"><h3>Estado</h3></div>
+      <div class="panel-body">
+        <div style="margin-bottom:14px;">{{ estado_badge(info) }}</div>
+        <p style="color:var(--gris-medio); font-size:13px; margin-top:0;">{{ info.descripcion }}</p>
+        <form method="post" action="/admin/candidatos/{{ cand.id }}/estado">
+          <label class="label-x" for="nuevo_estado">Cambiar estado</label>
+          <select class="input-x" id="nuevo_estado" name="nuevo_estado" style="margin-bottom:10px;">
+            {% for est in estados %}
+            <option value="{{ est.codigo }}" {% if est.codigo == cand.estado %}selected{% endif %}>{{ est.etiqueta }}</option>
+            {% endfor %}
+          </select>
+          <textarea class="input-x" name="comentario" placeholder="Comentario (opcional)" style="margin-bottom:10px;"></textarea>
+          <button type="submit" class="btn btn-rojo btn-sm" style="width:100%; justify-content:center;">Actualizar estado</button>
+        </form>
+
+        <div style="border-top:1px solid var(--gris-seccion); margin:16px 0 12px;"></div>
+        <form method="post" action="/admin/candidatos/{{ cand.id }}/comentar">
+          <label class="label-x" for="comentario_solo">Agregar comentario (sin cambiar estado)</label>
+          <textarea class="input-x" id="comentario_solo" name="comentario" required placeholder="Deja una nota visible en el historial…" style="margin-bottom:10px;"></textarea>
+          <button type="submit" class="btn btn-line btn-sm" style="width:100%; justify-content:center;">Agregar comentario</button>
+        </form>
+      </div>
+    </div>
+
+    {# ---- Historial de estados y comentarios (auditoría) ---- #}
+    <div class="panel">
+      <div class="panel-head"><h3>Historial de estados y comentarios</h3></div>
+      <div class="panel-body">
+        {% if historial %}
+        <div class="timeline">
+          {% for h in historial %}
+          {% set ini = h.estado_anterior is none %}
+          {% set solo = (not ini) and (h.estado_anterior == h.estado_nuevo) %}
+          {% set enew = estado_info(h.estado_nuevo) %}
+          {% set eold = estado_info(h.estado_anterior) if h.estado_anterior else none %}
+          <div class="tl-item {% if ini %}is-initial{% elif solo %}is-comment{% else %}is-change{% endif %}">
+            <span class="tl-dot"></span>
+            <div class="tl-head">
+              {% if ini %}
+                <span class="tl-trans">Hoja de vida recibida</span>
+                <span class="badge {{ enew.color }}">{{ enew.etiqueta }}</span>
+              {% elif solo %}
+                <span class="tl-trans">Comentario</span>
+                <span class="badge {{ enew.color }}">{{ enew.etiqueta }}</span>
+              {% else %}
+                <span class="tl-trans">
+                  {% if eold %}<span class="badge {{ eold.color }}">{{ eold.etiqueta }}</span>{% endif %}
+                  <span class="arrow">→</span>
+                  <span class="badge {{ enew.color }}">{{ enew.etiqueta }}</span>
+                </span>
+              {% endif %}
+            </div>
+            <div class="tl-meta">
+              <strong>{% if h.usuario_admin %}{{ h.usuario_admin.nombre_completo or h.usuario_admin.username }}{% elif ini %}Formulario público{% else %}Sistema{% endif %}</strong>
+              · {{ h.fecha_cambio | bogota }}{% if h.duracion_estado_segundos %} · {{ h.duracion_estado_segundos | duracion }} en el estado previo{% endif %}
+            </div>
+            {% if h.comentario %}<div class="tl-comment">{{ h.comentario }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--gris-medio); font-size:13.5px; margin:0;">Aún no hay movimientos registrados para este candidato.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>Datos de contacto</h3></div>
+      <div class="panel-body" style="font-size:13.5px; line-height:1.9; color:var(--subrayado);">
+        <div><span style="color:var(--gris-medio);">Documento:</span> {{ cand.tipo_documento }} {{ cand.numero_documento }}</div>
+        <div><span style="color:var(--gris-medio);">Correo:</span> {{ cand.correo }}</div>
+        <div><span style="color:var(--gris-medio);">Celular:</span> {{ cand.telefono_celular }}</div>
+        {% if cand.ciudad or cand.pais %}<div><span style="color:var(--gris-medio);">Ubicación:</span> {{ cand.ciudad }}{% if cand.ciudad and cand.pais %}, {% endif %}{{ cand.pais }}</div>{% endif %}
+        {% if cand.linkedin %}<div><span style="color:var(--gris-medio);">LinkedIn:</span> <a href="{{ cand.linkedin }}" target="_blank" rel="noopener">Perfil</a></div>{% endif %}
+        {% if cand.anos_experiencia is not none %}<div><span style="color:var(--gris-medio);">Experiencia:</span> {{ cand.anos_experiencia }} años</div>{% endif %}
+        {% if cand.pretension_salarial %}<div><span style="color:var(--gris-medio);">Pretensión:</span> {{ cand.pretension_salarial }}</div>{% endif %}
+        <div><span style="color:var(--gris-medio);">Viaje:</span> {{ 'Sí' if cand.disponibilidad_viaje else 'No' }} · <span style="color:var(--gris-medio);">Reubicación:</span> {{ 'Sí' if cand.disponibilidad_reubicacion else 'No' }}</div>
+        {% if cand.es_alumni %}<div><span style="color:var(--gris-medio);">Alumni:</span> {{ cand.programa_inalde or 'Sí' }}</div>{% endif %}
+        <div><span style="color:var(--gris-medio);">Registro:</span> {{ cand.fecha_registro | bogota }}</div>
+      </div>
+    </div>
+
+    {% if cand.cv_archivo %}
+    <div class="panel">
+      <div class="panel-head"><h3>Hoja de vida</h3></div>
+      <div class="panel-body">
+        <button type="button" class="btn btn-rojo"
+                @click="cv = true; if (!cvSrc) { setTimeout(() => { cvSrc = '/admin/candidatos/{{ cand.id }}/cv?inline=1' }, 300) }"
+                style="width:100%; justify-content:center;">
+          Ver hoja de vida (PDF)
+        </button>
+        <a class="btn btn-line btn-sm" href="/admin/candidatos/{{ cand.id }}/cv" style="width:100%; justify-content:center; margin-top:10px;">
+          Descargar
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% if cand.cv_archivo %}
+<div class="modal-overlay" x-show="cv" x-cloak @click.self="cv = false"
+     x-transition:enter="ov-enter" x-transition:enter-start="ov-from" x-transition:enter-end="ov-to"
+     x-transition:leave="ov-leave" x-transition:leave-start="ov-to" x-transition:leave-end="ov-from">
+  <div class="modal-card modal-cv" @click.stop
+       x-show="cv"
+       x-transition:enter="card-enter" x-transition:enter-start="card-from" x-transition:enter-end="card-to"
+       x-transition:leave="card-leave" x-transition:leave-start="card-to" x-transition:leave-end="card-from">
+    <div class="modal-head">
+      <h3>Hoja de vida — {{ cand.nombre_completo }}</h3>
+      <button type="button" class="modal-x" @click="cv = false" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="modal-body modal-body-flush">
+      <div class="cv-frame-wrap">
+        <div class="cv-frame-loading" x-show="!cvLoaded">Cargando hoja de vida…</div>
+        {# El iframe solo se crea cuando hay src (tras la animación) → no carga
+           el PDF al abrir la página ni compite con la transición. #}
+        <template x-if="cvSrc">
+          <iframe class="cv-frame" :src="cvSrc" @load="cvLoaded = true"
+                  :class="{ 'is-loaded': cvLoaded }" title="Hoja de vida en PDF"></iframe>
+        </template>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-line" @click="cv = false">Cerrar</button>
+      <a class="btn btn-rojo" href="/admin/candidatos/{{ cand.id }}/cv">Descargar</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+</div>{# /x-data visor de hoja de vida #}
+{% endblock %}

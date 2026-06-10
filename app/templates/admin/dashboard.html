@@ -1,0 +1,106 @@
+{% extends "admin/_layout.html" %}
+{% block seccion %}dashboard{% endblock %}
+{% block title %}Resumen{% endblock %}
+{% block heading %}Resumen de curaduría{% endblock %}
+
+{% block content %}
+<div class="metrics">
+  <div class="metric">
+    <div class="label">Candidatos</div>
+    <div class="value">{{ total_candidatos }}</div>
+  </div>
+  <div class="metric">
+    <div class="label">Ofertas laborales</div>
+    <div class="value">{{ total_ofertas }}</div>
+  </div>
+  <div class="metric">
+    <div class="label">Ofertas abiertas</div>
+    <div class="value">{{ ofertas_abiertas }}</div>
+  </div>
+  <div class="metric">
+    <div class="label">Evaluaciones</div>
+    <div class="value">{{ total_evaluaciones }}</div>
+  </div>
+  <div class="metric">
+    <div class="label">Recomendados (≥80)</div>
+    <div class="value accent">{{ recomendados }}</div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>Candidatos por estado</h2>
+    <a class="btn btn-line btn-sm" href="/admin/candidatos">Ver todos</a>
+  </div>
+  <div class="panel-body">
+    {% set dot = {
+      'recibido': '#64748b', 'en_evaluacion': '#d97706', 'preseleccionado': '#0284c7',
+      'finalista': '#059669', 'descartado': '#e11d48', 'contratado': '#E30613'
+    } %}
+    <div class="estado-btns">
+      {% for item in conteo_estados %}
+      {% set info = workflow.serializar_estado(item.estado.codigo) %}
+      <a class="estado-btn" href="/admin/candidatos?estado={{ item.estado.codigo }}"
+         title="Ver candidatos en estado «{{ info.etiqueta }}»">
+        <span class="eb-dot" style="background: {{ dot.get(item.estado.codigo, '#64748b') }};"></span>
+        <span class="eb-label">{{ info.etiqueta }}</span>
+        <span class="eb-n">{{ item.n }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>Últimas evaluaciones</h2>
+  </div>
+  <div class="panel-body" style="padding:0;">
+    {% if ultimas_evaluaciones %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Candidato</th>
+          <th>Oferta</th>
+          <th>Puntuación</th>
+          <th>Recomendación</th>
+          <th>Eliminatorios</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in ultimas_evaluaciones %}
+        <tr>
+          <td>{{ ev.candidato.nombre_completo if ev.candidato else '—' }}</td>
+          <td>{{ ev.oferta.titulo if ev.oferta else '—' }}</td>
+          <td>
+            <span class="score-pill {{ score_class(ev.puntuacion or 0) }}" style="width:38px;height:38px;font-size:14px;">
+              {{ ev.puntuacion or 0 }}
+            </span>
+          </td>
+          <td>{{ ev.nivel_recomendacion or '—' }}</td>
+          <td>
+            {% if ev.resultado_eliminatorio == 'cumple' %}
+              <span class="chip-ok">Cumple</span>
+            {% elif ev.resultado_eliminatorio == 'no_cumple' %}
+              <span class="chip-no">No cumple</span>
+            {% else %}
+              <span class="badge bg-slate-100 text-slate-700">Sin datos</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;">
+            <a class="btn btn-line btn-sm" href="/admin/candidatos/{{ ev.candidato_id }}#oferta-{{ ev.oferta_id }}">Ver</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <div class="ic">◷</div>
+      <p>Aún no se han ejecutado curadurías.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

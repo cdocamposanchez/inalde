@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ app_short_name }}{% endblock %} · {{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/admin.css" />
+</head>
+<body>
+{# ---------- Macros reutilizables ---------- #}
+{% macro score_class(p) -%}
+  {%- if p >= 90 -%}score-90
+  {%- elif p >= 80 -%}score-80
+  {%- elif p >= 70 -%}score-70
+  {%- elif p >= 60 -%}score-60
+  {%- elif p >= 40 -%}score-40
+  {%- else -%}score-0
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro estado_badge(info) -%}
+  <span class="badge {{ info.color }}">{{ info.etiqueta }}</span>
+{%- endmacro %}
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">I</div>
+      <div>
+        <strong>INALDE</strong><br />
+        <span>{{ app_short_name }}</span>
+      </div>
+    </div>
+
+    {% set seccion %}{% block seccion %}{% endblock %}{% endset %}
+    {% set seccion = seccion|trim %}
+    {% set cat_activo %}{% block cat_activo %}{% endblock %}{% endset %}
+    {% set cat_activo = cat_activo|trim %}
+    <a class="nav-link {% if seccion == 'dashboard' %}active{% endif %}" href="/admin">
+      <span class="ic">◧</span> Resumen
+    </a>
+    <a class="nav-link {% if seccion == 'candidatos' %}active{% endif %}" href="/admin/candidatos">
+      <span class="ic">☰</span> Candidatos
+    </a>
+    <a class="nav-link {% if seccion == 'ofertas' %}active{% endif %}" href="/admin/ofertas">
+      <span class="ic">◆</span> Ofertas laborales
+    </a>
+    {% if admin.es_superadmin %}
+    <a class="nav-link {% if seccion == 'usuarios' %}active{% endif %}" href="/admin/usuarios">
+      <span class="ic">◉</span> Usuarios
+    </a>
+    {% endif %}
+    {% if admin.puede_gestionar_catalogos() %}
+    <div class="nav-group">
+      <div class="nav-caption">Catálogos</div>
+      <div class="nav-sub">
+        <a class="nav-link {% if seccion == 'catalogos' and cat_activo == 'tipos-documento' %}active{% endif %}" href="/admin/catalogos/tipos-documento">Tipos de documento</a>
+        <a class="nav-link {% if seccion == 'catalogos' and cat_activo == 'nacionalidades' %}active{% endif %}" href="/admin/catalogos/nacionalidades">Nacionalidades</a>
+        <a class="nav-link {% if seccion == 'catalogos' and cat_activo == 'niveles-formacion' %}active{% endif %}" href="/admin/catalogos/niveles-formacion">Niveles de formación</a>
+        <a class="nav-link {% if seccion == 'catalogos' and cat_activo == 'sectores' %}active{% endif %}" href="/admin/catalogos/sectores">Sectores</a>
+        <a class="nav-link {% if seccion == 'catalogos' and cat_activo == 'departamentos' %}active{% endif %}" href="/admin/catalogos/departamentos">Departamentos</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="spacer"></div>
+
+    <div class="user-box">
+      <div class="uname">{{ admin.nombre_completo or admin.username }}</div>
+      <div class="urole">
+        {%- if admin.es_superadmin -%}Superadmin
+        {%- elif admin.es_admin -%}Administrador
+        {%- else -%}Revisor{%- endif -%}
+      </div>
+      <form method="post" action="/admin/logout">
+        <button type="submit" class="btn-logout">Cerrar sesión</button>
+      </form>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar-admin">
+      <h1>{% block heading %}{{ app_short_name }}{% endblock %}</h1>
+      {% block crumb %}{% endblock %}
+    </header>
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+<script defer src="/static/js/alpine.min.js"></script>
+<script defer src="/static/js/admin.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

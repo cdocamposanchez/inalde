@@ -1,0 +1,191 @@
+{% extends "admin/_layout.html" %}
+{% block seccion %}catalogos{% endblock %}
+{% block cat_activo %}{{ nombre }}{% endblock %}
+{% block title %}{{ meta.label }}{% endblock %}
+{% block heading %}{{ meta.label }}{% endblock %}
+{% block crumb %}<span class="crumb">Catálogo</span>{% endblock %}
+
+{% block content %}
+
+{# Toda la interacción (modales) la maneja Alpine.js. #}
+<div x-data="{ add: false, edit: null }"
+     @keydown.escape.window="add = false; edit = null"
+     x-effect="document.body.classList.toggle('modal-lock', add || !!edit)">
+
+  {# ---------- Barra: buscar + acción ---------- #}
+  <div class="table-toolbar" style="margin-bottom:18px;">
+    <div class="table-search-wrap">
+      <input class="tsi" type="search" placeholder="Buscar en {{ meta.label|lower }}…"
+             data-table-search="tbl-catalogo" aria-label="Buscar registro" />
+    </div>
+    <button type="button" class="btn btn-rojo" @click="add = true">+ Agregar registro</button>
+  </div>
+
+  {# ---------- Modal: agregar registro ---------- #}
+  <div class="modal-overlay" x-show="add" x-cloak @click.self="add = false"
+       x-transition:enter="ov-enter" x-transition:enter-start="ov-from" x-transition:enter-end="ov-to"
+       x-transition:leave="ov-leave" x-transition:leave-start="ov-to" x-transition:leave-end="ov-from">
+    <div class="modal-card" @click.stop
+         x-show="add"
+         x-transition:enter="card-enter" x-transition:enter-start="card-from" x-transition:enter-end="card-to"
+         x-transition:leave="card-leave" x-transition:leave-start="card-to" x-transition:leave-end="card-from">
+      <div class="modal-head">
+        <h3>Agregar registro</h3>
+        <button type="button" class="modal-x" @click="add = false" aria-label="Cerrar">&times;</button>
+      </div>
+      <form method="post" action="/admin/catalogos/{{ nombre }}/crear">
+        <div class="modal-body">
+          <div class="form-grid">
+            {% for campo in meta.campos %}
+            <div class="field">
+              <label class="label-x">
+                {%- if campo == 'codigo' -%}Código
+                {%- elif campo == 'codigo_dane' -%}Código DANE
+                {%- elif campo == 'nombre' -%}Nombre
+                {%- elif campo == 'peso' -%}Peso (orden de nivel)
+                {%- else -%}{{ campo }}{%- endif -%}
+                {% if campo == 'nombre' %}<span style="color:var(--rojo)">*</span>{% endif %}
+              </label>
+              {% if campo == 'peso' %}
+              <input class="input-x" type="number" name="peso" min="0" placeholder="1" />
+              {% else %}
+              <input class="input-x" type="text" name="{{ campo }}" {% if campo == 'nombre' %}required{% endif %} />
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-line" @click="add = false">Cancelar</button>
+          <button type="submit" class="btn btn-rojo">Agregar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# ---------- Modal: editar registro ---------- #}
+  <div class="modal-overlay" x-show="!!edit" x-cloak @click.self="edit = null"
+       x-transition:enter="ov-enter" x-transition:enter-start="ov-from" x-transition:enter-end="ov-to"
+       x-transition:leave="ov-leave" x-transition:leave-start="ov-to" x-transition:leave-end="ov-from">
+    <div class="modal-card" @click.stop
+         x-show="!!edit"
+         x-transition:enter="card-enter" x-transition:enter-start="card-from" x-transition:enter-end="card-to"
+         x-transition:leave="card-leave" x-transition:leave-start="card-to" x-transition:leave-end="card-from">
+      <div class="modal-head">
+        <h3>Editar «<span x-text="edit ? edit.nombre : 'registro'"></span>»</h3>
+        <button type="button" class="modal-x" @click="edit = null" aria-label="Cerrar">&times;</button>
+      </div>
+      <form method="post" :action="edit ? edit.action : '#'">
+        <div class="modal-body">
+          <div class="form-grid">
+            {% for campo in meta.campos %}
+            <div class="field">
+              <label class="label-x">
+                {%- if campo == 'codigo' -%}Código
+                {%- elif campo == 'codigo_dane' -%}Código DANE
+                {%- elif campo == 'nombre' -%}Nombre
+                {%- elif campo == 'peso' -%}Peso (orden de nivel)
+                {%- else -%}{{ campo }}{%- endif -%}
+                {% if campo == 'nombre' %}<span style="color:var(--rojo)">*</span>{% endif %}
+              </label>
+              {% if campo == 'peso' %}
+              <input class="input-x" type="number" name="peso" min="0"
+                     :value="edit ? (edit.peso == null ? '' : edit.peso) : ''" />
+              {% else %}
+              <input class="input-x" type="text" name="{{ campo }}" {% if campo == 'nombre' %}required{% endif %}
+                     :value="edit ? (edit.{{ campo }} == null ? '' : edit.{{ campo }}) : ''" />
+              {% endif %}
+            </div>
+            {% endfor %}
+            <div class="field">
+              <label class="label-x">Orden</label>
+              <input class="input-x" type="number" name="orden" min="0"
+                     :value="edit ? (edit.orden == null ? '' : edit.orden) : ''" />
+            </div>
+            <div class="field">
+              <label class="label-x">Estado</label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:var(--subrayado); padding-top:6px;">
+                <input type="checkbox" name="activo" value="1" :checked="edit ? !!edit.activo : false" />
+                Activo (visible en formularios)
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-line" @click="edit = null">Cancelar</button>
+          <button type="submit" class="btn btn-rojo">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# ---------- Lista ---------- #}
+  <div class="panel">
+    <div class="panel-head">
+      <h2><span data-search-count="tbl-catalogo" data-count-tpl="{n}">{{ total }}</span> registro(s)</h2>
+    </div>
+    <div class="panel-body" style="padding:0;">
+      {% if items %}
+      <table class="table" id="tbl-catalogo">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            {% if nombre == 'niveles-formacion' %}<th>Peso</th>{% endif %}
+            {% if nombre == 'departamentos' %}<th>Código DANE</th>{% else %}<th>Código</th>{% endif %}
+            <th>Activo</th>
+            <th>Orden</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in items %}
+          <tr>
+            <td><strong>{{ it.nombre }}</strong></td>
+            {% if nombre == 'niveles-formacion' %}<td class="num">{{ it.peso }}</td>{% endif %}
+            {% if nombre == 'departamentos' %}
+              <td class="num">{{ it.codigo_dane or '—' }}</td>
+            {% else %}
+              <td class="num">{{ it.codigo or '—' }}</td>
+            {% endif %}
+            <td>{% if it.activo %}<span class="chip-ok">Sí</span>{% else %}<span class="chip-no">No</span>{% endif %}</td>
+            <td class="num">{{ it.orden }}</td>
+            <td style="text-align:right;">
+              <div style="display:inline-flex; gap:8px; justify-content:flex-end;">
+                <button type="button" class="btn btn-line btn-sm"
+                        @click="edit = window.__CAT_ITEMS__['{{ it.id }}']">Editar</button>
+                <form method="post" action="/admin/catalogos/{{ nombre }}/{{ it.id }}/eliminar"
+                      onsubmit="return confirm('¿Eliminar «{{ it.nombre }}»?');" style="margin:0;">
+                  <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty"><p>Sin registros. Agrega el primero con el botón de arriba.</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>{# /x-data #}
+
+{# Datos de cada registro para el modal de edición (en <script> para que las
+   comillas de los valores no rompan los atributos). Alpine los lee al hacer clic. #}
+<script>
+  window.__CAT_ITEMS__ = {
+    {% for it in items %}
+    "{{ it.id }}": {{ {
+      "nombre": it.nombre,
+      "codigo": it.codigo|default(none),
+      "codigo_dane": it.codigo_dane|default(none),
+      "peso": it.peso|default(none),
+      "orden": it.orden,
+      "activo": it.activo|default(false),
+      "action": "/admin/catalogos/" ~ nombre ~ "/" ~ it.id ~ "/actualizar"
+    } | tojson }}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  };
+</script>
+{% endblock %}

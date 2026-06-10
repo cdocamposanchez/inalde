@@ -1,0 +1,46 @@
+# ============================================================
+# INALDE · Motor de Curaduría Ejecutiva
+# Levanta la aplicación FastAPI + PostgreSQL.
+#   docker compose up --build
+#   → http://localhost:7070           (formulario público)
+#   → http://localhost:7070/admin     (módulo administrativo)
+# ============================================================
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: inalde_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-inalde}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-inalde}
+      POSTGRES_DB: ${POSTGRES_DB:-curaduria_inalde}
+    volumes:
+      - inalde_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inalde} -d ${POSTGRES_DB:-curaduria_inalde}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: inalde_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Dentro de la red de Compose, el host de la base es el servicio "db".
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-inalde}:${POSTGRES_PASSWORD:-inalde}@db:5432/${POSTGRES_DB:-curaduria_inalde}
+    ports:
+      - "7070:7070"
+    volumes:
+      - inalde_uploads:/app/uploads
+
+volumes:
+  inalde_pgdata:
+  inalde_uploads:

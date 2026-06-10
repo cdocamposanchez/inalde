@@ -1,0 +1,97 @@
+{% extends "admin/_layout.html" %}
+{% block seccion %}ofertas{% endblock %}
+{% block title %}Ranking · {{ oferta.titulo }}{% endblock %}
+{% block heading %}{{ oferta.titulo }}{% endblock %}
+{% block crumb %}<span class="crumb">Ranking de candidatos</span>{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+  <div>
+    {% if oferta.codigo %}<span class="badge bg-slate-100 text-slate-700" style="border-color:var(--gris-barra);">{{ oferta.codigo }}</span>{% endif %}
+    <span class="badge bg-sky-100 text-sky-800">{{ oferta.modo_busqueda|replace('_',' ') }}</span>
+    {% if oferta.estado == 'abierta' %}<span class="chip-ok">Abierta</span>{% endif %}
+  </div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn btn-line btn-sm" href="/admin/ofertas/{{ oferta.id }}/editar">Editar oferta</a>
+    <form method="post" action="/admin/ofertas/{{ oferta.id }}/curar-todos" style="margin:0;">
+      <button type="submit" class="btn btn-rojo btn-sm">Curar todos los candidatos</button>
+    </form>
+  </div>
+</div>
+
+<div class="metrics">
+  <div class="metric">
+    <div class="label">Candidatos totales</div>
+    <div class="value">{{ total_candidatos }}</div>
+  </div>
+  <div class="metric">
+    <div class="label">Evaluados</div>
+    <div class="value">{{ evaluaciones|length }}</div>
+  </div>
+  <div class="metric">
+    <div class="label">Recomendados (≥80)</div>
+    <div class="value accent">
+      {{ evaluaciones | selectattr('puntuacion', 'ge', 80) | selectattr('resultado_eliminatorio', 'equalto', 'cumple') | list | length }}
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>Ranking</h2>
+  </div>
+  <div class="panel-body" style="padding:0;">
+    {% if evaluaciones %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:48px;">#</th>
+          <th>Candidato</th>
+          <th>Puntuación</th>
+          <th>Recomendación</th>
+          <th>Eliminatorios</th>
+          <th>Complejidad</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in evaluaciones %}
+        <tr>
+          <td class="num" style="color:var(--gris-medio); font-weight:600;">{{ loop.index }}</td>
+          <td>
+            <strong>{{ ev.candidato.nombre_completo if ev.candidato else '—' }}</strong><br />
+            <span style="color:var(--gris-medio); font-size:12.5px;">{{ ev.candidato.consecutivo if ev.candidato else '' }}</span>
+          </td>
+          <td>
+            <span class="score-pill {{ score_class(ev.puntuacion or 0) }}" style="width:38px;height:38px;font-size:14px;">{{ ev.puntuacion or 0 }}</span>
+          </td>
+          <td>{{ ev.nivel_recomendacion or '—' }}</td>
+          <td>
+            {% if ev.resultado_eliminatorio == 'cumple' %}
+              <span class="chip-ok">Cumple</span>
+            {% elif ev.resultado_eliminatorio == 'no_cumple' %}
+              <span class="chip-no">No cumple</span>
+            {% else %}
+              <span class="badge bg-amber-100 text-amber-800">Insuficiente</span>
+            {% endif %}
+          </td>
+          <td>{{ ev.complejidad_nivel or '—' }}</td>
+          <td style="text-align:right;">
+            <a class="btn btn-line btn-sm" href="/admin/candidatos/{{ ev.candidato_id }}#oferta-{{ oferta.id }}">Ver detalle</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <div class="ic">◷</div>
+      <p>Ningún candidato evaluado para esta oferta.</p>
+      <form method="post" action="/admin/ofertas/{{ oferta.id }}/curar-todos" style="margin-top:10px;">
+        <button type="submit" class="btn btn-rojo btn-sm">Curar todos los candidatos</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

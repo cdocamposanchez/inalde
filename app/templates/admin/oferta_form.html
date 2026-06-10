@@ -1,0 +1,259 @@
+{% extends "admin/_layout.html" %}
+{% block seccion %}ofertas{% endblock %}
+{% block title %}{% if oferta %}Editar oferta{% else %}Nueva oferta{% endif %}{% endblock %}
+{% block heading %}{% if oferta %}Editar oferta laboral{% else %}Nueva oferta laboral{% endif %}{% endblock %}
+
+{% block content %}
+{# Precarga de valores JSON en edición #}
+{% set skills_val = '' %}
+{% set tecnos_req_val = '' %}
+{% set sectores_t_val = '' %}
+{% set pesos_actuales = {} %}
+{% if oferta %}
+  {% if oferta.skills_requeridos %}{% set skills_val = (oferta.skills_requeridos | from_json_list) %}{% endif %}
+  {% if oferta.tecnologias_requeridas %}{% set tecnos_req_val = (oferta.tecnologias_requeridas | from_json_list) %}{% endif %}
+  {% if oferta.sectores_transferibles %}{% set sectores_t_val = (oferta.sectores_transferibles | from_json_list) %}{% endif %}
+  {% if oferta.pesos %}{% set pesos_actuales = (oferta.pesos | from_json_dict) %}{% endif %}
+{% endif %}
+
+<form method="post" action="/admin/ofertas/guardar">
+  {% if oferta %}<input type="hidden" name="id" value="{{ oferta.id }}" />{% endif %}
+
+  {# ---------- Bloque A: definición de la oferta ---------- #}
+  <div class="panel">
+    <div class="panel-head"><h2>Definición de la oferta</h2></div>
+    <div class="panel-body">
+      <div class="form-grid">
+        <div class="field">
+          <label class="label-x">Código de la oferta</label>
+          {% if oferta %}
+          <input class="input-x" value="{{ oferta.codigo or '—' }}" readonly
+                 style="background:var(--gris-seccion); color:var(--gris-medio);" />
+          {% else %}
+          <input class="input-x" value="Se asignará automáticamente (OFE-00000000)" readonly
+                 style="background:var(--gris-seccion); color:var(--gris-medio);" />
+          {% endif %}
+          <span class="crumb">El código se genera solo con la nomenclatura <strong>OFE-00000000</strong>.</span>
+        </div>
+        <div class="field">
+          <label class="label-x">Cargo *</label>
+          <input class="input-x" name="titulo" value="{{ oferta.titulo or '' if oferta else '' }}" required />
+        </div>
+        <div class="field">
+          <label class="label-x">Área</label>
+          <input class="input-x" name="area" value="{{ oferta.area or '' if oferta else '' }}" />
+        </div>
+        <div class="field">
+          <label class="label-x">Sector</label>
+          <select class="input-x" name="sector">
+            <option value="">— Sin definir —</option>
+            {% for s in sectores %}
+            <option value="{{ s.nombre }}" {% if oferta and oferta.sector == s.nombre %}selected{% endif %}>{{ s.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="label-x">Ubicación</label>
+          <input class="input-x" name="ubicacion" value="{{ oferta.ubicacion or '' if oferta else '' }}" />
+        </div>
+        <div class="field">
+          <label class="label-x">Tipo de empresa</label>
+          <input class="input-x" name="tipo_empresa" value="{{ oferta.tipo_empresa or '' if oferta else '' }}" placeholder="Multinacional, familiar, startup…" />
+        </div>
+        <div class="field col-2">
+          <label class="label-x">Descripción</label>
+          <textarea class="input-x" name="descripcion">{{ oferta.descripcion or '' if oferta else '' }}</textarea>
+        </div>
+        <div class="field col-2">
+          <label class="label-x">Contexto organizacional</label>
+          <textarea class="input-x" name="contexto_organizacional">{{ oferta.contexto_organizacional or '' if oferta else '' }}</textarea>
+        </div>
+        <div class="field col-2">
+          <label class="label-x">Reto principal del cargo</label>
+          <textarea class="input-x" name="reto_principal">{{ oferta.reto_principal or '' if oferta else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- Bloque B: requisitos parametrizables ---------- #}
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Requisitos del cargo</h2>
+      <span class="crumb">Todos los requisitos son parámetros que alimentan el motor de curaduría.</span>
+    </div>
+    <div class="panel-body">
+
+      {# --- Requisitos de experiencia --- #}
+      <p class="section-title" style="margin-top:0;">Requisitos de experiencia</p>
+      <div class="form-grid">
+        <div class="field">
+          <label class="label-x">Años de experiencia mínimos</label>
+          <input class="input-x" type="number" min="0" name="anos_experiencia_min" value="{{ oferta.anos_experiencia_min or 0 if oferta else 0 }}" />
+        </div>
+        <div class="field">
+          <label class="label-x">Nivel jerárquico mínimo</label>
+          <select class="input-x" name="nivel_jerarquico_min">
+            <option value="">— Sin definir —</option>
+            {% set njm = oferta.nivel_jerarquico_min if oferta else '' %}
+            {% for v in ['operativo','coordinacion','jefatura','gerencia','direccion','alta_direccion'] %}
+            <option value="{{ v }}" {% if njm == v %}selected{% endif %}>{{ v|replace('_',' ')|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field col-2">
+          <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:4px;">
+            <label class="check-inline">
+              <input type="checkbox" name="requiere_liderazgo" value="1" {% if oferta and oferta.requiere_liderazgo %}checked{% endif %} />
+              Exige liderazgo de equipos
+            </label>
+            <label class="check-inline">
+              <input type="checkbox" name="requiere_pyl" value="1" {% if oferta and oferta.requiere_pyl %}checked{% endif %} />
+              Exige responsabilidad sobre P&amp;L
+            </label>
+            <label class="check-inline">
+              <input type="checkbox" name="requiere_internacional" value="1" {% if oferta and oferta.requiere_internacional %}checked{% endif %} />
+              Exige experiencia internacional
+            </label>
+          </div>
+        </div>
+        <div class="field col-2">
+          <label class="label-x">Notas de experiencia <span style="color:var(--gris-medio); font-weight:400;">(descripción libre, opcional)</span></label>
+          <textarea class="input-x" name="requisitos_experiencia">{{ oferta.requisitos_experiencia or '' if oferta else '' }}</textarea>
+        </div>
+      </div>
+
+      {# --- Requisitos de educación --- #}
+      <p class="section-title">Requisitos de educación</p>
+      <div class="form-grid">
+        <div class="field">
+          <label class="label-x">Formación mínima</label>
+          <select class="input-x" name="formacion_min">
+            <option value="">— Sin definir —</option>
+            {% set fm = oferta.formacion_min if oferta else '' %}
+            {% for n in niveles %}
+            <option value="{{ n.codigo }}" {% if fm == n.codigo %}selected{% endif %}>{{ n.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="label-x">Área de estudio</label>
+          <input class="input-x" name="area_estudio" value="{{ oferta.area_estudio or '' if oferta else '' }}" placeholder="Administración, Ingeniería, Finanzas…" />
+        </div>
+        <div class="field col-2">
+          <label class="label-x">Notas de educación <span style="color:var(--gris-medio); font-weight:400;">(descripción libre, opcional)</span></label>
+          <textarea class="input-x" name="requisitos_educacion">{{ oferta.requisitos_educacion or '' if oferta else '' }}</textarea>
+        </div>
+      </div>
+
+      {# --- Requisitos técnicos --- #}
+      <p class="section-title">Requisitos técnicos</p>
+      <div class="form-grid">
+        <div class="field col-2">
+          <label class="label-x">Habilidades requeridas <span style="color:var(--gris-medio); font-weight:400;">(separadas por coma)</span></label>
+          <input class="input-x" name="skills_requeridos" value="{{ skills_val|join(', ') if skills_val else '' }}" placeholder="Liderazgo comercial, P&amp;L, Transformación digital" />
+        </div>
+        <div class="field col-2">
+          <label class="label-x">Tecnologías / herramientas requeridas <span style="color:var(--gris-medio); font-weight:400;">(separadas por coma)</span></label>
+          <input class="input-x" name="tecnologias_requeridas" value="{{ tecnos_req_val|join(', ') if tecnos_req_val else '' }}" placeholder="SAP, Power BI, Salesforce, Excel avanzado" />
+        </div>
+        <div class="field">
+          <label class="label-x">Idioma requerido</label>
+          <input class="input-x" name="idioma_requerido" value="{{ oferta.idioma_requerido or '' if oferta else '' }}" placeholder="Inglés" />
+        </div>
+        <div class="field">
+          <label class="label-x">Nivel de idioma mínimo</label>
+          <select class="input-x" name="idioma_nivel_min">
+            <option value="">— Sin definir —</option>
+            {% set inm = oferta.idioma_nivel_min if oferta else '' %}
+            {% for v in ['basico','intermedio','avanzado','nativo'] %}
+            <option value="{{ v }}" {% if inm == v %}selected{% endif %}>{{ v|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field col-2">
+          <label class="label-x">Notas técnicas <span style="color:var(--gris-medio); font-weight:400;">(descripción libre, opcional)</span></label>
+          <textarea class="input-x" name="requisitos_tecnicos">{{ oferta.requisitos_tecnicos or '' if oferta else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- Bloque C: configuración del motor ---------- #}
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Configuración del motor de búsqueda</h2>
+      <span class="crumb">Parámetros del motor ATS determinista (sin IA).</span>
+    </div>
+    <div class="panel-body">
+      <div class="form-grid">
+        <div class="field">
+          <label class="label-x">Modo de búsqueda</label>
+          <select class="input-x" name="modo_busqueda" id="modo_busqueda">
+            {% set modo_actual = oferta.modo_busqueda if oferta else 'hibrido' %}
+            <option value="matching_exacto" {% if modo_actual == 'matching_exacto' %}selected{% endif %}>Matching exacto</option>
+            <option value="potencial_exito" {% if modo_actual == 'potencial_exito' %}selected{% endif %}>Potencial de éxito</option>
+            <option value="hibrido" {% if modo_actual == 'hibrido' %}selected{% endif %}>Híbrido</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="label-x">Importancia del sector</label>
+          <select class="input-x" name="importancia_sector">
+            {% set imp = oferta.importancia_sector if oferta else 'medio' %}
+            {% for v in ['critico','alto','medio','bajo'] %}
+            <option value="{{ v }}" {% if imp == v %}selected{% endif %}>{{ v|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field col-2">
+          <label class="label-x">Sectores transferibles <span style="color:var(--gris-medio); font-weight:400;">(separados por coma)</span></label>
+          <input class="input-x" name="sectores_transferibles" value="{{ sectores_t_val|join(', ') if sectores_t_val else '' }}" placeholder="Consumo masivo, Retail, Banca" />
+        </div>
+        <div class="field">
+          <label class="label-x">País requerido</label>
+          <input class="input-x" name="pais_requerido" value="{{ oferta.pais_requerido or '' if oferta else '' }}" />
+        </div>
+        <div class="field">
+          <label class="label-x">Ciudad requerida</label>
+          <input class="input-x" name="ciudad_requerida" value="{{ oferta.ciudad_requerida or '' if oferta else '' }}" />
+        </div>
+        <div class="field">
+          <label class="label-x">Estado de la oferta</label>
+          <select class="input-x" name="estado">
+            {% set est = oferta.estado if oferta else 'abierta' %}
+            {% for v in ['abierta','pausada','cerrada'] %}
+            <option value="{{ v }}" {% if est == v %}selected{% endif %}>{{ v|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- Bloque D: pesos por criterio ---------- #}
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Pesos por criterio</h2>
+      <span class="crumb">Si se dejan vacíos, se usan los del modo seleccionado. La suma se normaliza a 100.</span>
+    </div>
+    <div class="panel-body">
+      <div class="form-grid">
+        {% for c in criterios %}
+        {% set valor = pesos_actuales.get(c) if pesos_actuales else None %}
+        <div class="field">
+          <label class="label-x">{{ c|replace('_',' ')|capitalize }}</label>
+          <input class="input-x" type="number" min="0" max="100" name="peso_{{ c }}"
+                 value="{{ valor if valor is not none else '' }}"
+                 placeholder="def. {{ pesos_default['hibrido'][c] }}" />
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:12px; justify-content:flex-end;">
+    <a class="btn btn-line" href="/admin/ofertas">Cancelar</a>
+    <button type="submit" class="btn btn-rojo">{% if oferta %}Guardar cambios{% else %}Crear oferta{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

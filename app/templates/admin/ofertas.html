@@ -1,0 +1,72 @@
+{% extends "admin/_layout.html" %}
+{% block seccion %}ofertas{% endblock %}
+{% block title %}Ofertas laborales{% endblock %}
+{% block heading %}Ofertas laborales{% endblock %}
+
+{% block content %}
+<div class="table-toolbar" style="margin-bottom:18px;">
+  <div class="table-search-wrap">
+    <input class="tsi" type="search" placeholder="Buscar por cargo, código, área o sector…"
+           data-table-search="tbl-ofertas" aria-label="Buscar oferta" />
+  </div>
+  <a class="btn btn-rojo" href="/admin/ofertas/nueva">+ Nueva oferta</a>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2><span data-search-count="tbl-ofertas" data-count-tpl="{n}">{{ ofertas|length }}</span> oferta(s)</h2>
+  </div>
+  <div class="panel-body" style="padding:0;">
+    {% if ofertas %}
+    <table class="table" id="tbl-ofertas">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Cargo</th>
+          <th>Área / Sector</th>
+          <th>Modo</th>
+          <th>Estado</th>
+          <th>Evaluados</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in ofertas %}
+        <tr>
+          <td class="num">{{ o.codigo or '—' }}</td>
+          <td><strong>{{ o.titulo }}</strong></td>
+          <td>
+            {{ o.area or '—' }}
+            {% if o.sector %}<br /><span style="color:var(--gris-medio); font-size:12.5px;">{{ o.sector }}</span>{% endif %}
+          </td>
+          <td>
+            <span class="badge bg-sky-100 text-sky-800">{{ o.modo_busqueda|replace('_',' ') }}</span>
+          </td>
+          <td>
+            {% if o.estado == 'abierta' %}
+              <span class="chip-ok">Abierta</span>
+            {% elif o.estado == 'pausada' %}
+              <span class="badge bg-amber-100 text-amber-800">Pausada</span>
+            {% else %}
+              <span class="badge bg-slate-100 text-slate-700" style="border-color:var(--gris-barra);">Cerrada</span>
+            {% endif %}
+          </td>
+          <td class="num">{{ conteos.get(o.id, 0) }}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            <a class="btn btn-line btn-sm" href="/admin/ofertas/{{ o.id }}/ranking">Ranking</a>
+            <a class="btn btn-line btn-sm" href="/admin/ofertas/{{ o.id }}/editar">Editar</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <div class="ic">◆</div>
+      <p>Aún no hay ofertas laborales.</p>
+      <a class="btn btn-rojo btn-sm" href="/admin/ofertas/nueva" style="margin-top:10px;">Crear la primera</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
